@@ -2,6 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>CBT Mock Test</title>
 <style>
   :root{
@@ -10,12 +14,14 @@
     --red:#ef4444; --amber:#f59e0b; --purple:#7c6ff0;
   }
   *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
-  .topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--border);}
-  .brand{display:flex;align-items:center;gap:10px;}
-  .avatar{width:30px;height:30px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;}
-  .timer{background:var(--panel2);padding:6px 14px;border-radius:20px;font-size:14px;border:1px solid var(--border);}
-  .submit-btn{background:var(--red);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;}
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;overflow-x:hidden;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;}
+  .brand{display:flex;align-items:center;gap:10px;min-width:0;}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;}
+  #topCandidateName{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw;}
+  .timer{background:var(--panel2);padding:6px 14px;border-radius:20px;font-size:14px;border:1px solid var(--border);white-space:nowrap;}
+  .submit-btn{background:var(--red);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap;min-height:36px;}
   .submit-btn:hover{opacity:.9;}
   .layout{display:flex;gap:16px;padding:16px;max-width:1100px;margin:0 auto;align-items:flex-start;}
   .qpanel{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px;min-width:0;}
@@ -26,25 +32,25 @@
   .hard{background:rgba(239,68,68,.15);color:var(--red);}
   .qtext{font-size:17px;font-weight:500;margin-bottom:4px;}
   .qhindi{font-size:13px;color:var(--muted);margin-bottom:18px;}
-  .option{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;background:var(--panel2);border:1px solid var(--border);margin-bottom:10px;cursor:pointer;transition:.15s;}
+  .option{display:flex;align-items:center;gap:12px;padding:14px 16px;min-height:44px;border-radius:10px;background:var(--panel2);border:1px solid var(--border);margin-bottom:10px;cursor:pointer;transition:.15s;-webkit-tap-highlight-color:transparent;}
   .option:hover{border-color:var(--blue);}
   .option.selected{border-color:var(--blue);background:rgba(59,91,253,.15);}
   .option.correct{border-color:var(--green);background:rgba(34,197,94,.15);}
   .option.incorrect{border-color:var(--red);background:rgba(239,68,68,.15);}
   .optletter{width:26px;height:26px;border-radius:50%;background:var(--panel);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
   .opttext{font-size:14px;}
-  .footer{display:flex;align-items:center;justify-content:space-between;margin-top:18px;}
-  .navbtn{background:transparent;border:1px solid var(--border);color:var(--text);padding:9px 16px;border-radius:8px;cursor:pointer;font-size:13px;}
+  .footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:18px;}
+  .navbtn{background:transparent;border:1px solid var(--border);color:var(--text);padding:9px 16px;min-height:40px;border-radius:8px;cursor:pointer;font-size:13px;-webkit-tap-highlight-color:transparent;}
   .navbtn:hover{border-color:var(--blue);}
   .navbtn:disabled{opacity:.35;cursor:not-allowed;}
-  .clearbtn{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;}
-  .nextbtn{background:linear-gradient(90deg,var(--blue),var(--purple));border:none;color:#fff;padding:9px 18px;border-radius:8px;cursor:pointer;font-size:13px;}
+  .clearbtn{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:9px 4px;min-height:40px;}
+  .nextbtn{background:linear-gradient(90deg,var(--blue),var(--purple));border:none;color:#fff;padding:9px 18px;min-height:40px;border-radius:8px;cursor:pointer;font-size:13px;-webkit-tap-highlight-color:transparent;}
   .sidebar{width:280px;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;flex-shrink:0;}
   .sidebar h3{margin:0 0 10px;font-size:14px;}
   .legend{display:flex;gap:12px;font-size:11px;color:var(--muted);margin-bottom:12px;flex-wrap:wrap;}
   .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:4px;}
   .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
-  .cell{aspect-ratio:1;border-radius:6px;border:1px solid var(--border);background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;color:var(--text);}
+  .cell{aspect-ratio:1;min-height:36px;border-radius:6px;border:1px solid var(--border);background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;color:var(--text);-webkit-tap-highlight-color:transparent;}
   .cell.current{background:var(--blue);border-color:var(--blue);}
   .cell.answered{background:rgba(34,197,94,.25);border-color:var(--green);}
   .status{margin-top:12px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;}
@@ -62,9 +68,9 @@
   .card h2{margin-top:0;}
   .field{margin-bottom:16px;}
   .field label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px;}
-  .field input{width:100%;padding:11px 12px;border-radius:8px;border:1px solid var(--border);background:var(--panel2);color:var(--text);font-size:14px;}
+  .field input{width:100%;padding:11px 12px;border-radius:8px;border:1px solid var(--border);background:var(--panel2);color:var(--text);font-size:16px;}
   .field input:focus{outline:none;border-color:var(--blue);}
-  .bigbtn{width:100%;background:linear-gradient(90deg,var(--blue),var(--purple));border:none;color:#fff;padding:13px;border-radius:10px;cursor:pointer;font-size:15px;margin-top:8px;}
+  .bigbtn{width:100%;background:linear-gradient(90deg,var(--blue),var(--purple));border:none;color:#fff;padding:13px;min-height:44px;border-radius:10px;cursor:pointer;font-size:15px;margin-top:8px;-webkit-tap-highlight-color:transparent;}
   .bigbtn:disabled{opacity:.4;cursor:not-allowed;}
   .branchcard{border:1px solid var(--border);background:var(--panel2);border-radius:12px;padding:20px;margin-bottom:14px;cursor:pointer;transition:.15s;}
   .branchcard:hover{border-color:var(--blue);}
@@ -74,7 +80,31 @@
   .finalcard{text-align:center;}
   .finalcard .big{font-size:44px;font-weight:700;margin:10px 0;}
   .finalcard .thanks{font-size:20px;margin-top:14px;color:var(--green);}
-  @media(max-width:800px){.layout{flex-direction:column;}.sidebar{width:100%;}}
+  @media(max-width:800px){
+    .layout{flex-direction:column;padding:12px;gap:12px;}
+    .sidebar{width:100%;order:2;}
+    .qpanel{order:1;padding:16px;}
+  }
+  @media(max-width:480px){
+    .topbar{padding:8px 12px;}
+    .avatar{width:26px;height:26px;font-size:12px;}
+    #topCandidateName{font-size:13px;max-width:32vw;}
+    .timer{padding:5px 10px;font-size:12px;}
+    .submit-btn{padding:7px 12px;font-size:12px;}
+    .qpanel{padding:14px;border-radius:10px;}
+    .qtext{font-size:15px;}
+    .option{padding:12px 12px;}
+    .opttext{font-size:13.5px;}
+    .footer{justify-content:space-between;}
+    .navbtn,.nextbtn{padding:9px 12px;font-size:12.5px;}
+    .grid{grid-template-columns:repeat(6,1fr);gap:5px;}
+    .centerwrap{margin:24px auto;padding:0 12px;}
+    .card{padding:22px 18px;}
+    .scorecard{padding:20px;}
+    .scorecard h1{font-size:28px;}
+    .finalcard .big{font-size:34px;}
+    .branchcard{padding:16px;}
+  }
 </style>
 </head>
 <body>
@@ -94,7 +124,7 @@
     <h2>Candidate Details</h2>
     <div class="field">
       <label>Full Name</label>
-      <input type="text" id="candName" placeholder="Enter your full name 'e.g. Himanshu Dixit'">
+      <input type="text" id="candName" placeholder="Enter your full name">
     </div>
     <div class="field">
       <label>Roll No. / Registration No.</label>
