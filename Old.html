@@ -108,8 +108,20 @@
   .finalcard .big{font-size:46px;font-weight:700;margin:10px 0;color:var(--navy2);font-family:Georgia,serif;}
   .finalcard .thanks{font-size:20px;margin-top:16px;color:var(--green);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
   @media(max-width:800px){.layout{flex-direction:column;}.sidebar{width:100%;}}
+  @media(max-width:480px){
+    .layout{padding:10px;gap:12px;}
+    .qpanel{padding:18px 16px;}
+    .qtext{font-size:16px;}
+    .sidebar{padding:14px;}
+    .option{padding:12px 14px;}
+  }
   .restart-btn{background:transparent;color:#f4ead9;border:1px solid #c9b98a;padding:7px 12px;border-radius:4px;font-size:12px;cursor:pointer;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-weight:600;margin-left:8px;white-space:nowrap;}
   .restart-btn:hover{background:rgba(255,255,255,.08);}
+  .modal-overlay{position:fixed;inset:0;background:rgba(20,20,25,.55);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;}
+  .modal-box{background:var(--paper2);border:1px solid var(--rule);border-radius:4px;padding:24px;max-width:360px;width:100%;box-shadow:0 10px 30px rgba(0,0,0,.25);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+  .modal-box p{margin:0 0 20px;font-size:14px;color:var(--ink);line-height:1.5;}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;}
+  .modal-actions button{margin:0;width:auto;}
   .topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
   @media(max-width:420px){
     .topbar{padding:10px 12px;flex-wrap:wrap;gap:8px;}
@@ -132,15 +144,14 @@
   </div>
   <div class="topbar-right">
     <div class="timer" id="timerBox" style="display:none;">⏱ <span id="timerDisplay">00:00</span></div>
-    <button class="submit-btn" id="topSubmitBtn" style="display:none;" onclick="confirmSubmit()">Submit Paper</button>
-    <button class="restart-btn" id="topRestartBtn" style="display:none;" onclick="confirmRestart()">↺ Restart</button>
+    <button class="submit-btn" id="topSubmitBtn" style="display:none;">Submit Paper</button>
+    <button class="restart-btn" id="topRestartBtn" style="display:none;">↺ Restart</button>
   </div>
 </div>
 
 <!-- STEP 1: CANDIDATE DETAILS -->
 <div id="detailsView" class="centerwrap">
   <div class="card">
-    <p style="text-align:center;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:11px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin:0 0 4px;">Garg Associate Pvt. Ltd. — Electrical Engineer Recruitment</p>
     <h2 style="text-align:center;">EEE — Core Electrical Engineering<br>Deep Subject Paper</h2>
     <h3 style="margin-top:0;font-weight:400;color:var(--ink-soft);font-size:14px;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;">Candidate Details</h3>
     <div class="field">
@@ -159,16 +170,16 @@
       <label>Phone Number</label>
       <input type="tel" id="candPhone" placeholder="10-digit mobile number">
     </div>
-    <button class="bigbtn" onclick="goToBranch()">Continue →</button>
+    <p id="detailsError" style="display:none;color:var(--red);font-size:12px;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:-6px 0 12px;"></p>
+    <button class="bigbtn" id="continueBtn">Continue →</button>
   </div>
 </div>
 
 <!-- STEP 2: BRANCH SELECTION + TEST CHOICE -->
 <div id="branchView" class="centerwrap" style="display:none;">
   <div class="card">
-    <p style="text-align:center;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:11px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin:0 0 4px;">Garg Associate Pvt. Ltd. — Electrical Engineer Recruitment</p>
     <h2 style="text-align:center;">Select Your Branch</h2>
-    <div class="branchcard selected" id="branchOption" onclick="selectBranch()">
+    <div class="branchcard selected" id="branchOption">
       <h3>EEE / EE / ECE</h3>
       <p>Electrical & Electronics / Electrical / Electronics & Communication Engineering</p>
     </div>
@@ -176,16 +187,16 @@
     <div style="margin-top:24px;padding:20px;border:1px solid var(--rule);border-radius:3px;background:#f2ede0;">
       <p style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:10px;letter-spacing:1.5px;color:var(--stampred);text-transform:uppercase;margin:0 0 6px;font-weight:700;">Paper I — Core Subject</p>
       <h3 style="margin:0 0 6px;font-size:19px;">EEE Deep Subject Paper</h3>
-      <p class="subtle" style="margin-bottom:16px;">Circuits & fundamentals, AC theory, electrical machines, power systems, switchgear & protection, wiring & cables, safety & earthing, measurements, panels, batteries, illumination, basic electronics, and drawing/schematic reading — aligned with the Electrical Engineer role at Garg Associate Pvt. Ltd.</p>
+      <p class="subtle" style="margin-bottom:16px;">Circuits & fundamentals, AC theory, electrical machines, power systems, switchgear & protection, wiring & cables, safety & earthing, measurements, panels, batteries, illumination, basic electronics, and drawing/schematic reading.</p>
       <p class="subtle" style="margin-bottom:16px;">50 Questions &nbsp;•&nbsp; 20 Minutes &nbsp;•&nbsp; Fresh random set every attempt</p>
-      <button class="bigbtn alt" onclick="startExam('core')">Start Core Electrical Paper →</button>
+      <button class="bigbtn alt" id="startCoreBtn">Start Core Electrical Paper →</button>
     </div>
 
     <hr class="divider">
 
     <p style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:10px;letter-spacing:1.5px;color:var(--ink-soft);text-transform:uppercase;margin:0 0 6px;font-weight:700;">Paper II — General</p>
-    <p class="subtle" style="margin-bottom:14px;">Mixed aptitude, reasoning, and general electrical/electronics fundamentals. 60 Questions • 45 Minutes.</p>
-    <button class="bigbtn" onclick="startExam('general')">Start General Test →</button>
+    <p class="subtle" style="margin-bottom:14px;">Mixed aptitude, reasoning, and general electrical/electronics fundamentals. 60 Questions • 20 Minutes.</p>
+    <button class="bigbtn" id="startGeneralBtn">Start General Test →</button>
   </div>
 </div>
 
@@ -201,9 +212,9 @@
     <div class="qhindi" id="qHindi"></div>
     <div id="optionsWrap"></div>
     <div class="footer">
-      <button class="navbtn" id="prevBtn" onclick="goPrev()">← Previous</button>
-      <button class="clearbtn" onclick="clearResponse()">Clear Response</button>
-      <button class="nextbtn" id="nextBtn" onclick="goNext()">Next →</button>
+      <button class="navbtn" id="prevBtn">← Previous</button>
+      <button class="clearbtn" id="clearBtn">Clear Response</button>
+      <button class="nextbtn" id="nextBtn">Next →</button>
     </div>
   </div>
 
@@ -227,13 +238,23 @@
 <!-- STEP 5: FINAL -->
 <div id="finalView" class="centerwrap" style="display:none;">
   <div class="card finalcard">
-    <p style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:10px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin:0 0 4px;">Garg Associate Pvt. Ltd.</p>
     <h2>Paper Completed</h2>
     <p id="finalCandLine" style="color:var(--ink-soft);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;"></p>
     <div class="big" id="finalScore">0</div>
     <p style="color:var(--ink-soft);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;">Marks Obtained</p>
     <div class="thanks">🎉 Thank you!</div>
-    <button class="bigbtn" style="margin-top:26px;" onclick="restartApp()">↺ Take Another Paper</button>
+    <button class="bigbtn" style="margin-top:26px;" id="restartFinalBtn">↺ Take Another Paper</button>
+  </div>
+</div>
+
+<!-- CUSTOM CONFIRM MODAL (avoids native confirm() which some in-app browsers block) -->
+<div id="modalOverlay" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <p id="modalText"></p>
+    <div class="modal-actions">
+      <button id="modalCancelBtn" class="navbtn">Cancel</button>
+      <button id="modalConfirmBtn" class="nextbtn">Confirm</button>
+    </div>
   </div>
 </div>
 
@@ -295,7 +316,7 @@ const generalBank = [
    the platform will still randomly draw 60 for the General Test by
    sampling with repetition-avoidance across duplicate ids if needed. */
 
-/* ================= CORE ELECTRICAL BANK (300 Qs) — Garg Associate JD ================= */
+/* ================= CORE ELECTRICAL BANK (300 Qs) ================= */
 const coreBank = [
 {diff:"EASY",marks:"+1 / -0.25",text:"Ohm's Law states current is directly proportional to:",hindi:"ओम का नियम कहता है धारा सीधे आनुपातिक है:",options:[{t:"Voltage"},{t:"Resistance"},{t:"Power"},{t:"Frequency"}],answer:0},
 {diff:"EASY",marks:"+1 / -0.25",text:"SI unit of resistance is:",hindi:"प्रतिरोध की SI इकाई है:",options:[{t:"Ohm"},{t:"Farad"},{t:"Henry"},{t:"Siemens"}],answer:0},
@@ -556,5 +577,4 @@ const coreBank = [
 {diff:"EASY",marks:"+1 / -0.25",text:"A rectifier circuit is mainly used to convert:",hindi:"एक रेक्टिफायर सर्किट मुख्यतः परिवर्तित करता है:",options:[{t:"DC to AC"},{t:"AC to DC"},{t:"AC to AC"},{t:"DC to DC only"}],answer:1},
 {diff:"MEDIUM",marks:"+2 / -0.5",text:"A full bridge rectifier circuit uses how many diodes?",hindi:"एक पूर्ण ब्रिज रेक्टिफायर सर्किट में कितने डायोड उपयोग होते हैं?",options:[{t:"2"},{t:"4"},{t:"6"},{t:"1"}],answer:1},
 {diff:"EASY",marks:"+1 / -0.25",text:"A transistor can be mainly used as:",hindi:"ट्रांजिस्टर मुख्यतः उपयोग किया जा सकता है:",options:[{t:"Only a resistor"},{t:"An amplifier or a switch"},{t:"Only an insulator"},{t:"Only a capacitor"}],answer:1},
-{diff:"EASY",marks:"+1 / -0.25",text:"A capacitor stores energy mainly in the form of:",hindi:"कैपेसिटर ऊर्जा मुख्यतः संग्रहित करता है इस रूप में:",options:[{t:"Magnetic field"},{t:"Electric field"},{t:"Heat"},{t:"Sound"}],answer:1},
-{diff:"EASY",marks:"+1 / -0.25",text:"An inductor stores energy mainly in the form of:",hindi:"इंडक्टर ऊर्जा मुख्यतः संग्रहित करता है इस रूप में:",options:[{t:"Electric field"},{t:"Magnetic field"},{t:"Heat"},{t:"Light"}],an
+{diff:"EASY",marks:"+1 / -0.25",text:"A capacitor stores energy mainly in 
