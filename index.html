@@ -888,6 +888,11 @@ const numericBank = [
 ];
 
 /* ---------------- STATE ---------------- */
+const GOOGLE_SHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyMpc0PTyuSSZG1AgQxFABWDa2I-ytNvKtr56L6ruHi-8nFws0E8EAYDXpxO4cHqyRB3A/exec";
+let studentId = "";
+let level2Score = "";
+let level2Result = "Not Attempted";
+
 let candidate = {name:"",branch:"",gender:"",mobile:"",email:""};
 let selectedGender = "";
 let currentPaper = 1;
@@ -938,6 +943,8 @@ function goToPaperSelection(){
     return;
   }
   candidate = {name, branch, gender:selectedGender, mobile, email};
+  // One ID is kept for this student's current test session so Level 2 updates the same row.
+  studentId = "ST-" + Date.now().toString(36).toUpperCase() + "-" + Math.random().toString(36).slice(2,6).toUpperCase();
   document.getElementById('topCandidateName').textContent = name;
   document.getElementById('avatarInitial').textContent = name.charAt(0).toUpperCase();
   document.getElementById('detailsView').style.display='none';
@@ -1153,6 +1160,33 @@ function submitTest(){
 /* ---------------- STEP 4 -> 5 (FINAL) ---------------- */
 const PAPER_LABELS = {1:'Paper 1 — EEE / EE / ECE',2:'Paper 2 — Core Electrical',3:'Paper 3 — Mixed Electrical (Set A)',4:'Paper 4 — Mixed Electrical (Set B)',5:'Paper V — Special Set'};
 
+async function sendResultToGoogleSheet(extra = {}) {
+  const payload = {
+    studentId,
+    fullName: candidate.name,
+    branch: candidate.branch,
+    gender: candidate.gender,
+    mobile: candidate.mobile,
+    email: candidate.email,
+    level1Paper: PAPER_LABELS[currentPaper] || "",
+    level1Score: obtainedScore.toFixed(2),
+    level1Result: obtainedScore >= PASS_MARK ? "PASS" : "FAIL",
+    level2Score: level2Score || "",
+    level2Result: level2Result || "Not Attempted",
+    ...extra
+  };
+
+  try {
+    await fetch(GOOGLE_SHEET_WEB_APP_URL, {
+      method: "POST",
+      mode: "no-cors",
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error("Google Sheet submission failed:", err);
+  }
+}
+
 function finalSubmit(){
   document.getElementById('resultView').style.display='none';
   document.getElementById('finalView').style.display='block';
@@ -1175,6 +1209,9 @@ function finalSubmit(){
     note.innerHTML = `✖ <span>Score ${obtainedScore.toFixed(2)} is below the passing mark of ${PASS_MARK}. You can try again from Paper Selection.</span>`;
     thanks.textContent = '🎉 Thank you!';
   }
+
+  // Save/update the student's Level 1 result in Google Sheets.
+  sendResultToGoogleSheet();
   window.scrollTo(0,0);
 }
 
@@ -1266,6 +1303,13 @@ function submitNumericTest(){
       <p style="margin:4px 0;color:var(--green);">Correct answer: <b>${q.answer}</b> ${q.unit||''}</p>
     </div>`;
   });
+  level2Score = `${correctCount} / ${numQuestions.length}`;
+  level2Result = "COMPLETED";
+  sendResultToGoogleSheet({
+    level2Score,
+    level2Result
+  });
+
   html += `<button class="bigbtn" style="max-width:300px;margin:20px auto 60px;display:block;" onclick="restartToPapers()">← Back to Papers</button>`;
   view.innerHTML = html;
   document.getElementById('numScoreHeading').textContent = `${correctCount} / ${numQuestions.length} Correct`;
