@@ -46,6 +46,10 @@
   .genderrow{display:flex;gap:10px;}
   .genderbtn{flex:1;text-align:center;padding:11px;border-radius:8px;border:1px solid var(--border);background:var(--panel2);color:var(--text);cursor:pointer;font-size:14px;}
   .genderbtn.selected{border-color:var(--blue);background:rgba(59,91,253,.15);}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;}
+  .modal-box{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:22px;max-width:360px;width:100%;}
+  .modal-box p{margin:0 0 18px;font-size:15px;line-height:1.5;}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;}
   .layout{display:flex;gap:16px;padding:16px;max-width:1100px;margin:0 auto;align-items:flex-start;}
   .qpanel{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px;min-width:0;}
   .qmeta{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);flex-wrap:wrap;margin-bottom:14px;}
@@ -140,6 +144,17 @@
   <div class="timer" id="timerBox" style="display:none;">⏱ <span id="timerDisplay">30:00</span></div>
   <button class="restart-btn" id="topRestartBtn" style="display:none;" onclick="restartToPapers()">↺ Restart</button>
   <button class="submit-btn" id="topSubmitBtn" style="display:none;" onclick="confirmSubmit()">Submit Test</button>
+</div>
+
+<!-- IN-APP MODAL (replaces native confirm()/alert(), which many embedded WebViews block) -->
+<div id="appModalOverlay" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <p id="appModalMsg"></p>
+    <div class="modal-actions">
+      <button class="navbtn" id="appModalCancelBtn" onclick="closeAppModal(false)">Cancel</button>
+      <button class="nextbtn" id="appModalOkBtn" onclick="closeAppModal(true)">OK</button>
+    </div>
+  </div>
 </div>
 
 <!-- STEP 1: CANDIDATE DETAILS -->
@@ -888,11 +903,6 @@ const numericBank = [
 ];
 
 /* ---------------- STATE ---------------- */
-const GOOGLE_SHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyMpc0PTyuSSZG1AgQxFABWDa2I-ytNvKtr56L6ruHi-8nFws0E8EAYDXpxO4cHqyRB3A/exec";
-let studentId = "";
-let level2Score = "";
-let level2Result = "Not Attempted";
-
 let candidate = {name:"",branch:"",gender:"",mobile:"",email:""};
 let selectedGender = "";
 let currentPaper = 1;
@@ -902,6 +912,27 @@ let responses = [];
 let timeLeft = 20*60;
 let timerInterval;
 let obtainedScore = 0;
+let lastCorrect = 0, lastWrong = 0, lastSkipped = 0;
+let numLastCorrect = 0, numLastWrong = 0, numLastSkipped = 0;
+
+/* ---------------- GOOGLE SHEETS LOGGING ----------------
+   Paste the URL of your deployed Google Apps Script Web App below.
+   See the setup instructions for how to create it. Leave as "" to disable logging. */
+const SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbw8r7Yk4I-H6ktkbg90NysS0s5gD5TJXylrbCiD3i_a7fuwZk5gWv3Ta620zwVhj8Xzyg/exec";
+
+function sendToSheet(sheetType, data){
+  if(!SHEET_WEBAPP_URL) return; // logging disabled until a URL is configured
+  try{
+    fetch(SHEET_WEBAPP_URL, {
+      method: 'POST',
+      mode: 'no-cors', // Apps Script web apps don't return CORS headers by default; we don't need to read the response
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids a CORS preflight
+      body: JSON.stringify({ sheet: sheetType, ...data })
+    }).catch(function(err){ console.warn('Sheet logging failed:', err); });
+  } catch(err){
+    console.warn('Sheet logging failed:', err);
+  }
+}
 let level1Passed = false;
 let bestLevel1Score = null;
 const PASS_MARK = 50;
@@ -912,6 +943,27 @@ let numCurrent = 0;
 let numResponses = [];
 let numTimeLeft = 30*60;
 let numTimerInterval;
+
+/* ---------------- IN-APP MODAL (works in WebViews that block native confirm()/alert()) ---------------- */
+let _modalConfirmCallback = null;
+function showAlertModal(msg){
+  _modalConfirmCallback = null;
+  document.getElementById('appModalMsg').textContent = msg;
+  document.getElementById('appModalCancelBtn').style.display = 'none';
+  document.getElementById('appModalOverlay').style.display = 'flex';
+}
+function showConfirmModal(msg, onConfirm){
+  _modalConfirmCallback = onConfirm;
+  document.getElementById('appModalMsg').textContent = msg;
+  document.getElementById('appModalCancelBtn').style.display = 'inline-block';
+  document.getElementById('appModalOverlay').style.display = 'flex';
+}
+function closeAppModal(result){
+  document.getElementById('appModalOverlay').style.display = 'none';
+  const cb = _modalConfirmCallback;
+  _modalConfirmCallback = null;
+  if(result && cb) cb();
+}
 
 function shuffle(arr){
   const a = arr.slice();
@@ -935,19 +987,27 @@ function goToPaperSelection(){
   const mobile = document.getElementById('candMobile').value.trim();
   const email = document.getElementById('candEmail').value.trim();
   if(!name || !branch || !selectedGender || !mobile || !email){
-    alert('Please fill in your Name, Branch, Gender, Mobile Number and Email ID to continue.');
+    showAlertModal('Please fill in your Name, Branch, Gender, Mobile Number and Email ID to continue.');
     return;
   }
   if(!/^\d{10}$/.test(mobile)){
-    alert('Please enter a valid 10-digit mobile number.');
+    showAlertModal('Please enter a valid 10-digit mobile number.');
     return;
   }
   candidate = {name, branch, gender:selectedGender, mobile, email};
-  // One ID is kept for this student's current test session so Level 2 updates the same row.
-  studentId = "ST-" + Date.now().toString(36).toUpperCase() + "-" + Math.random().toString(36).slice(2,6).toUpperCase();
   document.getElementById('topCandidateName').textContent = name;
   document.getElementById('avatarInitial').textContent = name.charAt(0).toUpperCase();
   document.getElementById('detailsView').style.display='none';
+
+  sendToSheet('Candidates', {
+    timestamp: new Date().toISOString(),
+    name: candidate.name,
+    branch: candidate.branch,
+    gender: candidate.gender,
+    mobile: candidate.mobile,
+    email: candidate.email
+  });
+
   showPaperSelection();
 }
 
@@ -1020,12 +1080,19 @@ function startTimer(){
 
 /* ---------------- RESTART: back to Paper Selection, never back to registration ---------------- */
 function restartToPapers(){
-  if(timerInterval || numTimerInterval){
-    if(!confirm('Restart will discard your current attempt and take you back to Paper Selection. Continue?')) return;
+  const inProgress = (document.getElementById('quizView').style.display !== 'none') ||
+                      (document.getElementById('numericQuizView').style.display !== 'none');
+  if(inProgress){
+    showConfirmModal('Restart will discard your current attempt and take you back to Paper Selection. Continue?', function(){
+      clearInterval(timerInterval);
+      clearInterval(numTimerInterval);
+      showPaperSelection();
+    });
+  } else {
+    clearInterval(timerInterval);
+    clearInterval(numTimerInterval);
+    showPaperSelection();
   }
-  clearInterval(timerInterval);
-  clearInterval(numTimerInterval);
-  showPaperSelection();
 }
 
 /* ---------------- QUIZ RENDER ---------------- */
@@ -1091,9 +1158,7 @@ function renderNav(){
 }
 
 function confirmSubmit(){
-  if(confirm('Submit the test? You cannot change answers after this.')){
-    submitTest();
-  }
+  showConfirmModal('Submit the test? You cannot change answers after this.', submitTest);
 }
 
 /* ---------------- STEP 3 -> 4 (REVIEW) ---------------- */
@@ -1116,6 +1181,7 @@ function submitTest(){
     else { wrong++; scoreValue-=neg; }
   });
   obtainedScore = scoreValue;
+  lastCorrect = correct; lastWrong = wrong; lastSkipped = skipped;
 
   let html = `
   <div class="scorecard">
@@ -1160,33 +1226,6 @@ function submitTest(){
 /* ---------------- STEP 4 -> 5 (FINAL) ---------------- */
 const PAPER_LABELS = {1:'Paper 1 — EEE / EE / ECE',2:'Paper 2 — Core Electrical',3:'Paper 3 — Mixed Electrical (Set A)',4:'Paper 4 — Mixed Electrical (Set B)',5:'Paper V — Special Set'};
 
-async function sendResultToGoogleSheet(extra = {}) {
-  const payload = {
-    studentId,
-    fullName: candidate.name,
-    branch: candidate.branch,
-    gender: candidate.gender,
-    mobile: candidate.mobile,
-    email: candidate.email,
-    level1Paper: PAPER_LABELS[currentPaper] || "",
-    level1Score: obtainedScore.toFixed(2),
-    level1Result: obtainedScore >= PASS_MARK ? "PASS" : "FAIL",
-    level2Score: level2Score || "",
-    level2Result: level2Result || "Not Attempted",
-    ...extra
-  };
-
-  try {
-    await fetch(GOOGLE_SHEET_WEB_APP_URL, {
-      method: "POST",
-      mode: "no-cors",
-      body: JSON.stringify(payload)
-    });
-  } catch (err) {
-    console.error("Google Sheet submission failed:", err);
-  }
-}
-
 function finalSubmit(){
   document.getElementById('resultView').style.display='none';
   document.getElementById('finalView').style.display='block';
@@ -1210,15 +1249,31 @@ function finalSubmit(){
     thanks.textContent = '🎉 Thank you!';
   }
 
-  // Save/update the student's Level 1 result in Google Sheets.
-  sendResultToGoogleSheet();
+  sendToSheet('Level1', {
+    timestamp: new Date().toISOString(),
+    name: candidate.name,
+    branch: candidate.branch,
+    gender: candidate.gender,
+    mobile: candidate.mobile,
+    email: candidate.email,
+    paper: PAPER_LABELS[currentPaper],
+    paperNum: currentPaper,
+    totalQuestions: questions.length,
+    attempted: lastCorrect + lastWrong,
+    correct: lastCorrect,
+    wrong: lastWrong,
+    skipped: lastSkipped,
+    score: obtainedScore.toFixed(2),
+    result: obtainedScore >= PASS_MARK ? 'Pass' : 'Fail'
+  });
+
   window.scrollTo(0,0);
 }
 
 /* ================= NUMERICAL ROUND (LEVEL 2) ================= */
 function startNumericExam(){
   if(!level1Passed){
-    alert('Clear any Level 1 paper (1–5) with a score of ' + PASS_MARK + ' or above to unlock the Numerical Round.');
+    showAlertModal('Clear any Level 1 paper (1–5) with a score of ' + PASS_MARK + ' or above to unlock the Numerical Round.');
     return;
   }
   numQuestions = shuffle(numericBank);
@@ -1273,9 +1328,7 @@ function numGoPrev(){
 
 function confirmNumericSubmit(){
   numSaveCurrent();
-  if(confirm('Submit the Numerical Round? You cannot change answers after this.')){
-    submitNumericTest();
-  }
+  showConfirmModal('Submit the Numerical Round? You cannot change answers after this.', submitNumericTest);
 }
 
 function submitNumericTest(){
@@ -1289,12 +1342,14 @@ function submitNumericTest(){
   const view = document.getElementById('numericResultView');
   view.style.display='block';
 
-  let correctCount = 0;
+  let correctCount = 0, wrongCount = 0, skippedCount = 0;
   let html = `<div class="scorecard"><h1 id="numScoreHeading"></h1><p>Numerical Round Result</p></div><h3 style="margin-bottom:14px;">Answer Review</h3>`;
   numQuestions.forEach((q,i)=>{
     const given = parseFloat(numResponses[i]);
     const isCorrect = !isNaN(given) && Math.abs(given - q.answer) <= q.tolerance;
-    if(isCorrect) correctCount++;
+    if(numResponses[i]===''){ skippedCount++; }
+    else if(isCorrect){ correctCount++; }
+    else { wrongCount++; }
     const tag = numResponses[i]==='' ? '<span class="reviewtag tagskip">Skipped</span>' : (isCorrect ? '<span class="reviewtag tagcorrect">Correct</span>' : '<span class="reviewtag tagwrong">Wrong</span>');
     html += `<div class="reviewq">
       <div class="qtext">Q${i+1}. [${q.topic}] ${q.text} ${tag}</div>
@@ -1303,16 +1358,26 @@ function submitNumericTest(){
       <p style="margin:4px 0;color:var(--green);">Correct answer: <b>${q.answer}</b> ${q.unit||''}</p>
     </div>`;
   });
-  level2Score = `${correctCount} / ${numQuestions.length}`;
-  level2Result = "COMPLETED";
-  sendResultToGoogleSheet({
-    level2Score,
-    level2Result
-  });
-
   html += `<button class="bigbtn" style="max-width:300px;margin:20px auto 60px;display:block;" onclick="restartToPapers()">← Back to Papers</button>`;
   view.innerHTML = html;
   document.getElementById('numScoreHeading').textContent = `${correctCount} / ${numQuestions.length} Correct`;
+  numLastCorrect = correctCount; numLastWrong = wrongCount; numLastSkipped = skippedCount;
+
+  sendToSheet('Level2', {
+    timestamp: new Date().toISOString(),
+    name: candidate.name,
+    branch: candidate.branch,
+    gender: candidate.gender,
+    mobile: candidate.mobile,
+    email: candidate.email,
+    totalQuestions: numQuestions.length,
+    attempted: correctCount + wrongCount,
+    correct: correctCount,
+    wrong: wrongCount,
+    skipped: skippedCount,
+    score: `${correctCount} / ${numQuestions.length}`
+  });
+
   window.scrollTo(0,0);
 }
 </script>
